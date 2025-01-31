@@ -4,6 +4,8 @@ import * as cdk from 'aws-cdk-lib';
 import { TodoListApiStack } from '../lib/todoListApi-stack';
 import { TodoTaskAppStack } from '../lib/todoTaskApp-stack';
 import { TodoListLayersStack } from '../lib/todoListLayers-stack';
+import { TodoListEventStack } from '../lib/todoListEvent-stack';
+import { TodoListEventLayerStack } from '../lib/todoListEventLayer-stack';
 
 const app = new cdk.App();
 
@@ -17,10 +19,21 @@ const tags = {
   team: "DEVs T2M"
 }
 
+const todoListEventLayerStack = new TodoListEventLayerStack(app, "TodoListEventLayerStack",{
+  env: env,
+  tags: tags
+})
+
 const todoListLayersStack = new TodoListLayersStack(app, "TodoListLayersStack",{
   env: env,
   tags: tags
 })
+
+const todoListEventStack = new TodoListEventStack(app, "TodoListEventStack",{
+  env: env,
+  tags: tags
+})
+todoListEventStack.addDependency(todoListEventLayerStack)
 
 const todoTaskAppStack = new TodoTaskAppStack(app, "TodoTaskAppStack",{
   env: env,
