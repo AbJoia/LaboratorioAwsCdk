@@ -36,6 +36,7 @@ const todoListEventStack = new TodoListEventStack(app, "TodoListEventStack",{
 todoListEventStack.addDependency(todoListEventLayerStack)
 
 const todoTaskAppStack = new TodoTaskAppStack(app, "TodoTaskAppStack",{
+  snsTopic: todoListEventStack.eventTopicSns,
   env: env,
   tags: tags
 })

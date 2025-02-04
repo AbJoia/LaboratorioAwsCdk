@@ -4,11 +4,16 @@ import * as lambda from "aws-cdk-lib/aws-lambda"
 import * as lambdaNodeJs from "aws-cdk-lib/aws-lambda-nodejs"
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb"
 import * as ssm from "aws-cdk-lib/aws-ssm"
+import * as sns from "aws-cdk-lib/aws-sns"
+
+export interface TodoTaskAppStackProps extends cdk.StackProps{
+    snsTopic: sns.Topic
+}
 
 export class TodoTaskAppStack extends cdk.Stack{
     taskHandler: lambdaNodeJs.NodejsFunction
 
-    constructor(scope: Construct, id: string, props?: cdk.StackProps){
+    constructor(scope: Construct, id: string, props: TodoTaskAppStackProps){
         super(scope, id, props);
 
         const todoTaskLayerVersionArn = ssm.StringParameter.valueForStringParameter(this, "TodoTaskLayerVersionArn")
@@ -44,7 +49,8 @@ export class TodoTaskAppStack extends cdk.Stack{
                 sourceMap: false
             },
             environment:{
-                TASK_DDB: taskTableDb.tableName
+                TASK_DDB: taskTableDb.tableName,
+                SNS_TOPIC_ARN: props.snsTopic.topicArn
             },
             layers: [
                 todoTaskLayer,
@@ -55,5 +61,6 @@ export class TodoTaskAppStack extends cdk.Stack{
         })
 
         taskTableDb.grantReadWriteData(this.taskHandler)
+        props.snsTopic.grantPublish(this.taskHandler)
     }
 }
