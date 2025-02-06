@@ -6,6 +6,7 @@ import { Construct } from 'constructs';
 
 export interface TodoListApiStackProps extends cdk.StackProps {
     lambdaTodoTaskApp: lambdaNodeJs.NodejsFunction
+    s3UploadUrlFunction: lambdaNodeJs.NodejsFunction
 }
 
 export class TodoListApiStack extends cdk.Stack {
@@ -147,5 +148,11 @@ export class TodoListApiStack extends cdk.Stack {
 
         //DELETE /tasks/{email}/{id}
         apiTaskWithEmailAndId.addMethod('DELETE', todoTaskAppIntegration)
+
+        //GET /tasks/upload-file-url
+        const lambdaUrlUploadFileIntegration = new apiGateway.LambdaIntegration(props.s3UploadUrlFunction)
+
+        apiTaskResource.addResource('upload-file-url')
+            .addMethod("GET", lambdaUrlUploadFileIntegration)
     }
 }
