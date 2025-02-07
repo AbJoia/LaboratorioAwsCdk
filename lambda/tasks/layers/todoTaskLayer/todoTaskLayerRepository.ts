@@ -109,4 +109,23 @@ export class TodoTaskRepository {
         if(data.Attributes) return data.Attributes as TodoTaskModelDb
         throw new Error("Task not found")
     }
+
+    async createBatchTask(taskModels: TodoTaskModelDb[]): Promise<TodoTaskModelDb[]>{
+        const putRequests = taskModels.map(task => {
+            return {
+                PutRequest: {
+                    Item: task
+                }
+            }
+        })
+
+        const params = {
+            RequestItems: {            
+                [this.tasksDdb]: putRequests
+            }
+        }
+
+        await this.ddbClient.batchWrite(params).promise()
+        return taskModels
+    }
 }

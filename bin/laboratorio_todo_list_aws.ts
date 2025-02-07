@@ -50,6 +50,7 @@ const todoTaskAppStack = new TodoTaskAppStack(app, "TodoTaskAppStack",{
   tags: tags
 })
 todoTaskAppStack.addDependency(todoListLayersStack)
+todoTaskAppStack.addDependency(todoListEventStack)
 
 const todoListApiStack = new TodoListApiStack(app, "TodoListApiStack", {
   lambdaTodoTaskApp: todoTaskAppStack.taskHandler,
