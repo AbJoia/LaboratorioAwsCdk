@@ -70,7 +70,7 @@ export class TodoTaskAppStack extends cdk.Stack{
         //Recursos importação de lote de tasks
 
         const s3Bucket = new s3.Bucket(this, "BatchTasksBucket", {
-            bucketName: `batch-tasks-bucket-aj-${Date.now()}`,
+            bucketName: `batch-tasks-bucket-aj-${this.account}-${this.region}`,
             removalPolicy: cdk.RemovalPolicy.DESTROY
         })
 
