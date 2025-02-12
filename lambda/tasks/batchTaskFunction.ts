@@ -93,7 +93,7 @@ async function importBatchTasks(record: S3EventRecord): Promise<TodoTaskModelDb[
     const tasks: TodoTaskModelDb[] = []
 
     try {
-        objectData.split('\n').slice(1).forEach(line => {
+        objectData.split('\n').forEach(line => {
             const cleanedLine = line.replace(/\r/g, '')
             const [
                 title,
