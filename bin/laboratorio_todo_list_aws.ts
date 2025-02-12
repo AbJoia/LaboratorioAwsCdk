@@ -7,6 +7,7 @@ import { TodoListLayersStack } from '../lib/todoListLayers-stack';
 import { TodoListEventStack } from '../lib/todoListEvent-stack';
 import { TodoListEventLayerStack } from '../lib/todoListEventLayer-stack';
 import { TodoNotifyStack } from '../lib/todoNotify-stack'
+import {AuthLayerStack} from '../lib/authLayer-stack'
 
 const app = new cdk.App();
 
@@ -19,6 +20,11 @@ const tags = {
   cost: "Treinamento - AWS",
   team: "DEVs T2M"
 }
+
+const authLayerStack = new AuthLayerStack(app, "AuthLayerStack", {
+  env: env,
+  tags: tags
+})
 
 const todoListEventLayerStack = new TodoListEventLayerStack(app, "TodoListEventLayerStack",{
   env: env,
@@ -44,13 +50,14 @@ const todoListNotifyStack = new TodoNotifyStack(app, "TodoNotifyStack", {
 todoListNotifyStack.addDependency(todoListEventStack)
 todoListNotifyStack.addDependency(todoListEventLayerStack)
 
-const todoTaskAppStack = new TodoTaskAppStack(app, "TodoTaskAppStack",{
+const todoTaskAppStack = new TodoTaskAppStack(app, "TodoTaskAppStack",{  
   snsTopic: todoListEventStack.eventTopicSns,
   env: env,
   tags: tags
 })
 todoTaskAppStack.addDependency(todoListLayersStack)
 todoTaskAppStack.addDependency(todoListEventStack)
+todoTaskAppStack.addDependency(authLayerStack)
 
 const todoListApiStack = new TodoListApiStack(app, "TodoListApiStack", {
   lambdaTodoTaskApp: todoTaskAppStack.taskHandler,

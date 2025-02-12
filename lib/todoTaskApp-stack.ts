@@ -8,9 +8,10 @@ import * as ssm from "aws-cdk-lib/aws-ssm"
 import * as sns from "aws-cdk-lib/aws-sns"
 import * as s3 from "aws-cdk-lib/aws-s3"
 import * as iam from "aws-cdk-lib/aws-iam"
+import * as cognito from "aws-cdk-lib/aws-cognito"
 
 export interface TodoTaskAppStackProps extends cdk.StackProps{
-    snsTopic: sns.Topic
+    snsTopic: sns.Topic    
 }
 
 export class TodoTaskAppStack extends cdk.Stack{
@@ -19,6 +20,9 @@ export class TodoTaskAppStack extends cdk.Stack{
 
     constructor(scope: Construct, id: string, props: TodoTaskAppStackProps){
         super(scope, id, props);
+
+        const authTaskLayerVersionArn = ssm.StringParameter.valueForStringParameter(this, "AuthLayerVersionArn")
+        const authLayer = lambda.LayerVersion.fromLayerVersionArn(this, "AuthLayerVersionArn", authTaskLayerVersionArn)
 
         const todoTaskLayerVersionArn = ssm.StringParameter.valueForStringParameter(this, "TodoTaskLayerVersionArn")
         const todoTaskLayer = lambda.LayerVersion.fromLayerVersionArn(this, "TodoTaskLayerVersionArn", todoTaskLayerVersionArn)
@@ -58,12 +62,23 @@ export class TodoTaskAppStack extends cdk.Stack{
             },
             layers: [
                 todoTaskLayer,
-                todoTaskDtoLayer
+                todoTaskDtoLayer,
+                authLayer
             ],
             tracing: lambda.Tracing.ACTIVE,
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_119_0
         })
 
+        const taskHandlerCognitoPolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['cognito-idp:AdminGetUser'],
+            resources: [
+                "arn:aws:cognito-idp:us-east-1:442012114445:userpool/us-east-1_LKDxJdORd",
+                "arn:aws:cognito-idp:us-east-1:442012114445:userpool/us-east-1_maR0m4dS9"           
+            ]
+        })
+
+        this.taskHandler.addToRolePolicy(taskHandlerCognitoPolicy)
         taskTableDb.grantReadWriteData(this.taskHandler)
         props.snsTopic.grantPublish(this.taskHandler)
 

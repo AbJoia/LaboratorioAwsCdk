@@ -4,12 +4,16 @@ import { SNS } from "aws-sdk";
 import { TodoTaskRepository, TodoTaskModelDb, TaskStatusEnum } from "../../lambda/tasks/layers/todoTaskLayer/todoTaskLayerRepository"
 import { TodoTaskPostRequest, TodoTaskPutRequest } from "./layers/todoTaskDtoLayer/todoTaskDtoLayer";
 import { ActionTypeEnum, EventTypeEnum, SnsEvelope, TodoTaskEventDto } from "../events/layers/taskEventLayer/taskEvent";
+import { AuthService } from "../auth/layers/authLayer/auth"
+import { CognitoIdentityServiceProvider } from "aws-sdk"
 
 const taskDdbTableName = process.env.TASK_DDB!
 const snsTopicArn = process.env.SNS_TOPIC_ARN!
 const ddbClient = new DocumentClient()
 const taskRepository = new TodoTaskRepository(ddbClient, taskDdbTableName)
 const snsClient = new SNS()
+const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
+const authService = new AuthService(cognitoIdentityServiceProvider)
 
 export async function handler(event: APIGatewayProxyEvent, context: Context)
     : Promise<APIGatewayProxyResult> {
@@ -17,6 +21,8 @@ export async function handler(event: APIGatewayProxyEvent, context: Context)
     const apiRequestId = event.requestContext.requestId
     const lambdaId = context.awsRequestId
     const httpMethod = event.httpMethod
+    const userEmail = await authService.getUserEmail(event.requestContext.authorizer)
+    const isAdmin = authService.isAdminUser(event.requestContext.authorizer)
 
     console.log(`API RequestId: ${apiRequestId} - LambdaId: ${lambdaId}`)
     console.log(JSON.stringify(event));
@@ -26,6 +32,16 @@ export async function handler(event: APIGatewayProxyEvent, context: Context)
         const taskIdParameter = event.queryStringParameters?.taskid
 
         if (emailParameter) {
+
+            if (emailParameter !== userEmail && !isAdmin) {
+                return {
+                    statusCode: 403,
+                    body: JSON.stringify({
+                        message: "Forbidden"
+                    })
+                }
+            }
+
             if (taskIdParameter) {
                 try {
                     const result = await taskRepository.getTaskByPkAndEmail(emailParameter, taskIdParameter)
@@ -51,6 +67,15 @@ export async function handler(event: APIGatewayProxyEvent, context: Context)
             }
         }
 
+        if (!isAdmin) {
+            return {
+                statusCode: 403,
+                body: JSON.stringify({
+                    message: "Forbidden"
+                })
+            }
+        }
+
         const result = await taskRepository.getAllTasks()
         return {
             statusCode: 200,
@@ -61,9 +86,19 @@ export async function handler(event: APIGatewayProxyEvent, context: Context)
     if (httpMethod === "POST") {
         try {
             const taskRequest = JSON.parse(event.body!) as TodoTaskPostRequest
-            const taskModel = buildTask(taskRequest)
+            const taskModel = buildTask(taskRequest)            
+
+            if(taskModel.owner.email !== userEmail && !isAdmin){
+                return {
+                    statusCode: 403,
+                    body: JSON.stringify({
+                        message: "Forbidden"
+                    })
+                }
+            }
+
             const result = await taskRepository.creatTask(taskModel)
-           
+
             await publishToSns(
                 ActionTypeEnum.INSERT,
                 EventTypeEnum.SINGLE_TASK,
@@ -95,6 +130,15 @@ export async function handler(event: APIGatewayProxyEvent, context: Context)
     if (event.resource === "/tasks/{email}/{id}") {
         const emailPathParameter = event.pathParameters!.email as string
         const idPathParameter = event.pathParameters!.id as string
+
+        if(emailPathParameter !== userEmail && !isAdmin){
+            return {
+                statusCode: 403,
+                body: JSON.stringify({
+                    message: "Forbidden"
+                })
+            }
+        }
 
         if (httpMethod === "PUT") {
             const statusRequest = JSON.parse(event.body!) as TodoTaskPutRequest
